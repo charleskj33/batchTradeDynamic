@@ -19,4 +19,5 @@ public class TradeDto implements BaseTradeDto{
     private String tradeRef;
     private String mtmValuation;
     private String mtmValuationDate;
+    private String dealDate;
 }

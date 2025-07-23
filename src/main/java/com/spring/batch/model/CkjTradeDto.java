@@ -11,5 +11,6 @@ import org.springframework.stereotype.Component;
 @ToString
 public class CkjTradeDto implements BaseTradeDto {
     private String tradeRef;
-    private String ckjField;
+    private String mtmValuation;
+    private String mtmValuationDate;
 }

@@ -1,11 +1,10 @@
 package com.spring.batch.config;
 
-import com.spring.batch.batch.reader.gdsTradeReader;
+import com.spring.batch.batch.reader.GenericTradesReader;
+import com.spring.batch.batch.reader.TradeReaderStrategy;
+import com.spring.batch.model.CkjTradeDto;
 import com.spring.batch.model.FileMetadata;
 import com.spring.batch.model.TradeDto;
-import com.spring.batch.repository.ClientRepo;
-import com.spring.batch.repository.PrincipalRepo;
-import com.spring.batch.service.NcsFeedDataService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.item.file.FlatFileItemReader;
@@ -25,68 +24,101 @@ import java.util.Arrays;
 @Slf4j
 public class ReaderConfig {
 
+    // ---------- Generic FlatFile Readers ----------
+
     @Bean
     @StepScope
-    @Qualifier("flatFileItemReader")
-    public FlatFileItemReader<TradeDto> flatFileItemReader(LineMapper<TradeDto> lineMapper,
-                                                           @Value("#{jobParameters['filePath']}") String inputFilePath,
-                                                           FileMetadata fileMetadata) {
-        FlatFileItemReader<TradeDto> reader = new FlatFileItemReader<>();
-        try {
-            FileSystemResource resource = new FileSystemResource(inputFilePath);
-            if (!resource.exists()) {
-                throw new IllegalStateException("File not Found: " + resource.getPath());
-            }
-            reader.setResource(resource);
-            reader.setLinesToSkip(1);
-            reader.setLineMapper(lineMapper);
-            fileMetadata.setSourceSystem("GDS");
-        } catch (IllegalStateException e) {
-            log.error("File load error", e);
-        }
-        return reader;
+    public FlatFileItemReader<TradeDto> gdsFlatFileReader(
+            @Qualifier("gdsLineMapper") LineMapper<TradeDto> lineMapper,
+            @Value("#{jobParameters['filePath']}") String filePath,
+            FileMetadata fileMetadata
+    ) {
+        return buildReader(filePath, lineMapper, fileMetadata, "GDS");
     }
 
     @Bean
-    public LineMapper<TradeDto> lineMapper() {
-        DefaultLineMapper<TradeDto> lineMapper = new DefaultLineMapper<>();
-        String[] fieldNames = getPoJoFieldNames(TradeDto.class);
+    @StepScope
+    public FlatFileItemReader<CkjTradeDto> ckjFlatFileReader(
+            @Qualifier("ckjLineMapper") LineMapper<CkjTradeDto> lineMapper,
+            @Value("#{jobParameters['filePath']}") String filePath,
+            FileMetadata fileMetadata
+    ) {
+        return buildReader(filePath, lineMapper, fileMetadata, "CKJ");
+    }
+
+    private <T> FlatFileItemReader<T> buildReader(String filePath, LineMapper<T> lineMapper, FileMetadata fileMetadata, String sourceSystem) {
+        FlatFileItemReader<T> reader = new FlatFileItemReader<>();
+        FileSystemResource resource = new FileSystemResource(filePath);
+
+        if (!resource.exists()) {
+            throw new IllegalArgumentException("File not found at path: " + filePath);
+        }
+
+        reader.setResource(resource);
+        reader.setLinesToSkip(1);
+        reader.setLineMapper(lineMapper);
+        fileMetadata.setSourceSystem(sourceSystem);
+        return reader;
+    }
+
+    // ---------- Line Mappers ----------
+
+    @Bean
+    public LineMapper<TradeDto> gdsLineMapper() {
+        return buildLineMapper(TradeDto.class);
+    }
+
+    @Bean
+    public LineMapper<CkjTradeDto> ckjLineMapper() {
+        return buildLineMapper(CkjTradeDto.class);
+    }
+
+    private <T> LineMapper<T> buildLineMapper(Class<T> clazz) {
+        DefaultLineMapper<T> lineMapper = new DefaultLineMapper<>();
+        String[] fieldNames = Arrays.stream(clazz.getDeclaredFields())
+                .map(Field::getName)
+                .toArray(String[]::new);
 
         DelimitedLineTokenizer tokenizer = new DelimitedLineTokenizer(";");
         tokenizer.setNames(fieldNames);
         tokenizer.setStrict(true);
 
-        BeanWrapperFieldSetMapper<TradeDto> fieldMapper = new BeanWrapperFieldSetMapper<>();
-        fieldMapper.setTargetType(TradeDto.class);
+        BeanWrapperFieldSetMapper<T> mapper = new BeanWrapperFieldSetMapper<>();
+        mapper.setTargetType(clazz);
 
         lineMapper.setLineTokenizer(tokenizer);
         lineMapper.setFieldSetMapper(fieldSet -> {
             if (fieldSet.getFieldCount() != fieldNames.length) {
-                log.error("Invalid field count: expected {}, got {}", fieldNames.length, fieldSet.getFieldCount());
+                log.warn("Field count mismatch for class {}: expected {}, found {}",
+                        clazz.getSimpleName(), fieldNames.length, fieldSet.getFieldCount());
                 return null;
             }
-            return fieldMapper.mapFieldSet(fieldSet);
+            return mapper.mapFieldSet(fieldSet);
         });
 
         return lineMapper;
     }
 
-    private String[] getPoJoFieldNames(Class<?> clazz) {
-        return Arrays.stream(clazz.getDeclaredFields())
-                .map(Field::getName)
-                .toArray(String[]::new);
-    }
+    // ---------- Generic Strategy-based Readers ----------
 
-    // Register as "gdsTradeReader" bean
     @Bean(name = "gdsTradeReader")
     @StepScope
-    public gdsTradeReader gdsTradeReader(
-            @Qualifier("flatFileItemReader") FlatFileItemReader<TradeDto> delegate,
-            FileMetadata fileMetadata,
-            NcsFeedDataService tradeService,
-            PrincipalRepo principalRepo,
-            ClientRepo clientRepo
+    public GenericTradesReader<TradeDto> gdsTradeReader(
+            FlatFileItemReader<TradeDto> gdsFlatFileReader,
+            @Qualifier("gdsTradeReaderStrategy") TradeReaderStrategy<TradeDto> strategy,
+            FileMetadata fileMetadata
     ) throws Exception {
-        return new gdsTradeReader(delegate, fileMetadata, tradeService, principalRepo, clientRepo);
+        return new GenericTradesReader<>(gdsFlatFileReader, strategy, fileMetadata);
     }
+
+    /*@Bean(name = "ckjTradeReader")
+    @StepScope
+    public GenericTradesReader<CkjTradeDto> ckjTradeReader(
+            FlatFileItemReader<CkjTradeDto> ckjFlatFileReader,
+            @Qualifier("ckjTradeReaderStrategy") TradeReaderStrategy<CkjTradeDto> strategy,
+            FileMetadata fileMetadata
+    ) throws Exception {
+        return new GenericTradesReader<>(ckjFlatFileReader, strategy, fileMetadata);
+    }*/
 }
+
