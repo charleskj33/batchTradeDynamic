@@ -143,14 +143,14 @@ public class NcsFeedDataService {
         if(StringUtils.isEmpty(batchId)){
             throw new RuntimeException();
         }
-
-        trackerRepo.findByBatchId(batchId).ifPresentOrElse(tracker -> {
+        String service ="load";
+        trackerRepo.findByBatchIdAndService(batchId, service).ifPresentOrElse(tracker -> {
             tracker.setStatus(status);
             tracker.setDesc(description);
             tracker.setUpdatedTimeStamp(LocalDateTime.now());
             trackerRepo.save(tracker);
         }, () -> {
-            log.warn("No Tracker found for batchId {}. Skipping update.", batchId);
+            log.warn("No Tracker found for batchId {} and service {}. Skipping update.", batchId, service);
         });
     }
 }

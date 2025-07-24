@@ -14,7 +14,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 import java.util.List;
 
-@Component
+/*@Component
 @RequiredArgsConstructor
 public class ScheduledBatchJob {
 
@@ -28,7 +28,7 @@ public class ScheduledBatchJob {
     @Scheduled(fixedRate = 3600000)
     public void runJob() throws Exception {
         // Example trade types – you can read from DB/config/enum
-        List<String> tradeTypes = List.of("gds"/*, "ckj"*/);
+        List<String> tradeTypes = List.of("gds"*//*, "ckj"*//*);
 
             //fileMetadata.reset(); // reset for each trade type
 
@@ -41,5 +41,5 @@ public class ScheduledBatchJob {
 
             jobLauncher.run(job, jobParameters);
         }
-    }
+    }*/
 

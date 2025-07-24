@@ -38,7 +38,7 @@ public class GdsTradeWriterStrategy implements TradeWriterStrategy<TradeDto> {
 
                 String mode = service.determineMode(clientName);
                 metadata.incrementClientRecord(clientName);
-                metadata.setClientModes(clientName, "mode");
+                metadata.setClientModes(clientName, mode);
                 prepareNcsFeedData(json, entities, clientName, externalId, metadata);
             } catch (Exception e) {
                 log.error("Error writing trade for client {}: {}", wrapper.getClientName(), e.getMessage(), e);

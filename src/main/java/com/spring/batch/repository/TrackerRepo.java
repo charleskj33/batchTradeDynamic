@@ -9,4 +9,6 @@ import java.util.Optional;
 @Repository
 public interface TrackerRepo extends JpaRepository<TrackerEntity, Long> {
     Optional<TrackerEntity> findByBatchId(String batchId);
+    Optional<TrackerEntity> findByBatchIdAndService(String batchId, String service);
+
 }

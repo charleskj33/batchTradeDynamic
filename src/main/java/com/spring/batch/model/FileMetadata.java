@@ -64,4 +64,15 @@ public class FileMetadata {
     public void incrementTotalRecords(int size){
         totalRecords.addAndGet(size);
     }
+
+    public void reset(){
+        this.batchId = UUID.randomUUID().toString();
+        this.totalRecords.set(0);
+        this.processedRecords.set(0);
+        this.allRecords.clear();
+        this.clientBatchIds.clear();
+        this.clientRecordCounts.clear();
+        this.clientModes.clear();
+        this.sourceSystem = null;
+    }
 }

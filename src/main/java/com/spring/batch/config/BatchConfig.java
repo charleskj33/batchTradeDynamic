@@ -1,30 +1,21 @@
 package com.spring.batch.config;
 
 import javax.sql.DataSource;
-
-import com.spring.batch.batch.processor.GenericTradeProcessor;
-import com.spring.batch.batch.processor.TradeProcessorStrategy;
-import com.spring.batch.batch.writer.GenericTradeWriter;
-import com.spring.batch.batch.writer.TradeWriterStrategy;
 import com.spring.batch.factory.TradeComponentFactory;
 import com.spring.batch.model.BaseTradeDto;
 import com.spring.batch.model.FileMetadata;
-import com.spring.batch.model.TradeDto;
 import com.spring.batch.model.TradeDtoWrapper;
 import com.spring.batch.service.KafkaProducerService;
 import com.spring.batch.service.NcsFeedDataService;
 import com.spring.batch.util.TradeUtil;
 import jakarta.persistence.EntityManagerFactory;
 import lombok.RequiredArgsConstructor;
-import org.apache.kafka.common.utils.Exit;
-import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.support.JobRepositoryFactoryBean;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
