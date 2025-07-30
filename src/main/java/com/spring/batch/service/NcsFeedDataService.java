@@ -1,6 +1,7 @@
 package com.spring.batch.service;
 
 import com.spring.batch.entity.ExceptionEntity;
+import com.spring.batch.entity.TradeEntity;
 import com.spring.batch.model.FileMetadata;
 import com.spring.batch.model.TrackerEntity;
 import com.spring.batch.model.TradeFeedMasterEntity;
@@ -41,6 +42,14 @@ public class NcsFeedDataService {
         this.tradeRepository = tradeRepository;
         this.tradeMasterRepo = tradeMasterRepo;
         this.tradeRepositoryException = tradeRepositoryException;
+    }
+
+    public void persistMarketData(List<TradeEntity> feedMasterEntities){
+        try{
+
+        }catch (Exception e){
+            throw new RuntimeException("Exception"+e.getMessage(),e);
+        }
     }
 
     public void publishTracker(String batchId, String serviceName, String status, String description) {

@@ -7,6 +7,7 @@ import com.spring.batch.model.TradeDto;
 import com.spring.batch.repository.ClientRepo;
 import com.spring.batch.repository.PrincipalRepo;
 import com.spring.batch.service.NcsFeedDataService;
+import jakarta.mail.MessagingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.item.ExecutionContext;
@@ -15,7 +16,9 @@ import org.springframework.batch.item.file.FlatFileParseException;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Component("ckjTradeReaderStrategy")
@@ -24,7 +27,7 @@ public class CkjTradeReaderStrategy implements TradeReaderStrategy<CkjTradeDto> 
 
     private final NcsFeedDataService tradeService;
 
-    @Override
+    /*@Override
     public List<CkjTradeDto> readAndPreprocess(FlatFileItemReader<CkjTradeDto> delegate,
                                                FileMetadata metadata) throws Exception {
         List<CkjTradeDto> trades = new ArrayList<>();
@@ -44,7 +47,7 @@ public class CkjTradeReaderStrategy implements TradeReaderStrategy<CkjTradeDto> 
         List<CkjTradeDto> valid = validate(trades, metadata);
         metadata.setAllRecords(valid.stream().map(CkjTradeDto::getTradeRef).toList());
         return valid;
-    }
+    }*/
 
     private List<CkjTradeDto> validate(List<CkjTradeDto> trades, FileMetadata metadata) {
         List<CkjTradeDto> valid = new ArrayList<>();
@@ -67,6 +70,26 @@ public class CkjTradeReaderStrategy implements TradeReaderStrategy<CkjTradeDto> 
 
     private boolean isNotBlank(String val) {
         return val != null && !val.trim().isEmpty();
+    }
+
+    @Override
+    public boolean shouldSkip(List<CkjTradeDto> records) {
+        return false;
+    }
+
+    @Override
+    public void handleValidationFailure(FileMetadata fileMetadata, NcsFeedDataService ncsFeedDataService) throws MessagingException {
+
+    }
+
+    @Override
+    public Map<String, CkjTradeDto> filterAndDeDuplicate(List<CkjTradeDto> records, FileMetadata fileMetadata, NcsFeedDataService ncsFeedDataService) {
+        return null;
+    }
+
+    @Override
+    public List<CkjTradeDto> enrichRecords(Collection<CkjTradeDto> records, FileMetadata fileMetadata, NcsFeedDataService ncsFeedDataService) {
+        return null;
     }
 }
 

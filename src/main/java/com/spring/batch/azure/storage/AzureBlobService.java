@@ -20,7 +20,7 @@ public class AzureBlobService {
     @Value("${azure.download-dir:${java.io.tmpdir}}")
     private String downloadDir;
 
-    public AzureBlobService(@Value("${spring.azure.accountName}") String accountName){
+    /*public AzureBlobService(@Value("${spring.azure.accountName}") String accountName){
 
         DefaultAzureCredential credential = new DefaultAzureCredentialBuilder().build();
         String blobEnd = "http://ckj.blob.net";
@@ -52,5 +52,9 @@ public class AzureBlobService {
         }
 
         return new FileSystemResource(outputFile);
+    }*/
+
+    public FileSystemResource downloadBlob(String containerName, String blobName) {
+        return null;
     }
 }

@@ -14,17 +14,23 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 
 @Slf4j
-@Component("gdsTradeWriter")
+//@Component("gdsTradeWriter")
+@Component
 @RequiredArgsConstructor
 public class GenericTradeWriter<T extends BaseTradeDto> implements ItemWriter<TradeDtoWrapper<T>> {
 
     private final FileMetadata fileMetadata;
     private final NcsFeedDataService tradeService;
-    private final TradeWriterStrategy<T> writerStrategy;
+    private TradeWriterStrategy<T> writerStrategy;
+    private final TradeWriterStrategyFactory writerStrategyFactory;
 
     @Override
     @Transactional(Transactional.TxType.REQUIRED)
     public void write(Chunk<? extends TradeDtoWrapper<T>> chunk) {
+        String tradeType = fileMetadata.getSourceSystem();
+        if (writerStrategy == null) {
+            writerStrategy = writerStrategyFactory.getStrategy(tradeType);
+        }
         try {
             writerStrategy.write(new ArrayList<>(chunk.getItems()), fileMetadata, tradeService);
         } catch (Exception e) {

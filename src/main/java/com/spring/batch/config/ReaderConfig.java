@@ -129,7 +129,7 @@ public class ReaderConfig {
         return new GenericTradesReader<>(gdsFlatFileReader, strategy, fileMetadata,ncsFeedDataService);
     }
 
-    @Bean(name = "ckjTradeReader")
+    /*@Bean(name = "ckjTradeReader")
     @StepScope
     public GenericTradesReader<CkjTradeDto> ckjTradeReader(
             FlatFileItemReader<CkjTradeDto> ckjFlatFileReader,
@@ -138,5 +138,5 @@ public class ReaderConfig {
             NcsFeedDataService ncsFeedDataService
     ) throws Exception {
         return new GenericTradesReader<>(ckjFlatFileReader, strategy,fileMetadata, ncsFeedDataService);
-    }
+    }*/
 }

@@ -8,4 +8,3 @@ import com.spring.batch.service.NcsFeedDataService;
 public interface TradeProcessorStrategy<T extends BaseTradeDto> {
     TradeDtoWrapper<T> process(T trade, FileMetadata fileMetadata, NcsFeedDataService tradeService);
 }
-

@@ -38,32 +38,26 @@ public class GdsTradeProcessorStrategy implements TradeProcessorStrategy<TradeDt
         String tradeRef = item.getTradeRef();
 
         try {
-            String principalName = item.getPrincipal();
-            String orgCode = item.getOrgCode();
-
-            //return new TradeDtoWrapper<>(item, "CKJ", "1243");
-            Principals principal = principalRepo.findByPcmByName(principalName).orElse(null);
+             //return new TradeDtoWrapper<>(item, "CKJ", "1243");
+            Principals principal = findByPrincipalByName(item.getPrincipal());
             if (principal == null) {
                 return handle(item, metadata, service, "Principal not found");
             }
 
-            String clientCmId = principal.getClientCmId();
-            String principalCmId = principal.getCmId();
+            String clientName = findClientName(principal.getClientCmId());
+            if (clientName == null) {
+                return handle(item, metadata, service, "clientName not found");
+            }
 
-            String clientName = Optional.ofNullable(clientCmId)
-                    .flatMap(clientRepo::findByShortName)
-                    .map(Clients::getShortName)
-                    .orElse(null);
-
-            String counterpartyId = counterPartyRepo.findByCountName(orgCode, clientCmId).orElse(null);
+            String counterpartyId = findCounterPId(item.getOrgCode(), principal.getClientCmId());
 
             if (counterpartyId == null) {
                 return handle(item, metadata, service, "Counterparty not found");
             }
 
-            String externalId = findExternalId(principalCmId, counterpartyId, item.getProduct(), item.getDealDate());
+            String externalId = findExternalId(principal.getCmId(), counterpartyId, item.getProduct(), item.getDealDate());
 
-            if (clientName == null || externalId == null) {
+            if (externalId == null) {
                 return handle(item, metadata, service, "Missing client name or externalId");
             }
 
@@ -89,8 +83,30 @@ public class GdsTradeProcessorStrategy implements TradeProcessorStrategy<TradeDt
         ncsFeedDataService.addExcepAdd(entity);
     }
 
+    private Principals findByPrincipalByName(String pName){
+        if(isBlank(pName))
+            return null;
+        return principalRepo.findByPcmByName(pName).orElse(null);
+    }
+
+    private String findClientName(String clientCmId){
+        if(isBlank(clientCmId))
+            return null;
+        return Optional.ofNullable(clientCmId)
+                .flatMap(clientRepo::findByShortName)
+                .map(Clients::getShortName)
+                .orElse(null);
+    }
+
+    private String findCounterPId(String orgCode, String clientCmId){
+        if(isBlank(orgCode) || isBlank(clientCmId) )
+            return null;
+        return counterPartyRepo.findByCountName(orgCode, clientCmId)
+                .orElse(null);
+    }
+
     public String findExternalId(String principalCmId, String counterPartyCmId, String product, String dealDateStr) {
-        if (StringUtils.isBlank(principalCmId) || StringUtils.isBlank(counterPartyCmId)) {
+        if (isBlank(principalCmId) || isBlank(counterPartyCmId)) {
             return null;
         }
 
@@ -103,14 +119,13 @@ public class GdsTradeProcessorStrategy implements TradeProcessorStrategy<TradeDt
       return handleMultipleAgreements(agreementList, product, dealDateStr);
     }
 
-    private String handleMultipleAgreements(List<Agreement> agreements, String product, String dealDateStr) {
+    public String handleMultipleAgreements(List<Agreement> agreements, String product, String dealDateStr) {
 
         // Determine if the product is RI or RO
-        boolean isProductRIorRO = "RI".equalsIgnoreCase(product) || "RO".equalsIgnoreCase(product);
 
         // Filter based on product type and masterAgType
         List<Agreement> filteredAgreements = agreements.stream()
-                .filter(agreement -> matchesProductAndMasterAgType(agreement, product, isProductRIorRO))
+                .filter(agreement -> matchesProductAndMasterAgType(agreement, product))
                 .toList();
 
         // If no agreement matches, return null
@@ -120,7 +135,11 @@ public class GdsTradeProcessorStrategy implements TradeProcessorStrategy<TradeDt
 
         // If there's exactly one valid agreement, return its externalId (no date check needed)
         if (filteredAgreements.size() == 1) {
-            return StringUtils.defaultIfBlank(filteredAgreements.get(0).getExternalId(), null);
+            //return StringUtils.defaultIfBlank(filteredAgreements.get(0).getExternalId(), null);
+            return filteredAgreements.stream()
+                    .findFirst()
+                    .map(Agreement::getExternalId)
+                    .orElse(null);
         }
 
         // Parse the deal date string into a LocalDate
@@ -137,33 +156,33 @@ public class GdsTradeProcessorStrategy implements TradeProcessorStrategy<TradeDt
                 .filter(agreement -> isAgreementDateValid(agreement, dealDateOpt.get()))  // Only valid agreements
                 .max(Comparator.comparing(a -> parseDateSafe(a.getAgreeDate()).orElse(LocalDate.MIN)))  // Get the latest date
                 .map(Agreement::getExternalId)
-                .filter(StringUtils::isNotBlank) // Ensure the externalId is not blank
+                .filter(GdsTradeProcessorStrategy::isNotBlank) // Ensure the externalId is not blank
                 .orElse(null); // If no valid externalId found, return null
     }
 
     // Helper method for matching product and masterAgType
-    private boolean matchesProductAndMasterAgType(Agreement agreement, String product, boolean isProductRIorRO) {
+    private boolean matchesProductAndMasterAgType(Agreement agreement, String product) {
         // Fetch the tradeTypes from the agreement
         String tradeTypes = agreement.getTrTypes();
 
         // If tradeTypes is blank or null, we don't process this agreement
-        if (StringUtils.isBlank(tradeTypes)) {
+        if (isBlank(tradeTypes)) {
             return false;
         }
 
         // Convert the product to uppercase for case-insensitive matching
-        String pC = StringUtils.defaultString(product).toUpperCase();
+        String pC = StringUtils.defaultString(product, "").toUpperCase();
+        List<String> typeList = convertToList(tradeTypes);
 
         // Check if tradeTypes contains the product (case-insensitive)
-        boolean isProductMatch = Arrays.stream(tradeTypes.split(","))
-                .map(String::trim)  // Trim each trade type before matching
-                .anyMatch(type -> StringUtils.containsIgnoreCase(type, pC));  // Case-insensitive match
+        boolean isProductMatch = typeList.stream()
+                .anyMatch(type -> containsIgnoreCase(type, pC));  // Case-insensitive match
 
         // If the product matches, proceed with masterAgType validation
         if (isProductMatch) {
             // Master agreement type check (optimize by checking once)
-            String masterAgType = agreement.getMasterAgType();
-
+            String masterAgType = StringUtils.defaultString(agreement.getMasterAgType(), "").toUpperCase();
+            boolean isProductRIorRO = "RI".equalsIgnoreCase(product) || "RO".equalsIgnoreCase(product);
             if (isProductRIorRO) {
                 // If the product is RI or RO, ensure masterAgType contains "IS" or "GM"
                 return masterAgType.contains("IS") || masterAgType.contains("GM");
@@ -175,6 +194,13 @@ public class GdsTradeProcessorStrategy implements TradeProcessorStrategy<TradeDt
 
         // If product doesn't match, return false
         return false;
+    }
+
+    private List<String> convertToList(String tradeTypes) {
+        return Arrays.stream(tradeTypes.split(","))
+                .map(String::trim)
+                .filter(s->!s.isEmpty())
+                .toList();
     }
 
 
@@ -192,6 +218,21 @@ public class GdsTradeProcessorStrategy implements TradeProcessorStrategy<TradeDt
             log.warn("Invalid date format: {}", dateStr);
             return Optional.empty();
         }
+    }
+
+    public static boolean containsIgnoreCase(String source, String search) {
+        if (source == null || search == null) {
+            return false;
+        }
+        return source.equalsIgnoreCase(search) || source.toLowerCase().contains(search.toLowerCase());
+    }
+
+    public static boolean isBlank(String str) {
+        return str == null || str.trim().isEmpty();
+    }
+
+    public static boolean isNotBlank(String str) {
+        return !(isBlank(str));
     }
 }
 
